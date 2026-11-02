@@ -1,0 +1,25 @@
+{
+  "app": { "logLevel": "info" },
+  "pi": {
+    "sessionDir": "./data/pi-sessions",
+    "rpcTimeoutMs": 300000,
+    "systemPromptPath": "./pi/SYSTEM.md",
+    "extensions": ["./pi/extensions/pilink-web-search.ts"],
+    "skills": ["./pi/skills/web-research/SKILL.md"]
+  },
+  "storage": { "databasePath": "./data/pilink.sqlite" },
+  "security": {
+    "allowedWechatUserIds": [],
+    "workspaceRoots": ["./workspaces"],
+    "requireApprovalForShell": true
+  },
+  "workspaces": {
+    "defaultId": "default",
+    "defaultPath": "./workspaces/default"
+  },
+  "wechat": {
+    "enabled": false,
+    "baseUrl": "https://ilinkai.weixin.qq.com"
+  },
+  "web": { "searchCount": 8 }
+}

@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+config/config.json
+data/
+workspaces/
+*.log
+.DS_Store
+Thumbs.db
