@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 export function migrateDatabase(db: Database.Database): void {
   db.exec("CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)");
@@ -38,6 +38,14 @@ export function migrateDatabase(db: Database.Database): void {
           "created_at TEXT NOT NULL, resolved_at TEXT);"
       );
       db.prepare("INSERT INTO schema_migrations(version, applied_at) VALUES (?, ?)").run(1, new Date().toISOString());
+    });
+    migration();
+  }
+
+  if (currentVersion < 2) {
+    const migration = db.transaction(() => {
+      db.exec("CREATE TABLE IF NOT EXISTS channel_state (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL)");
+      db.prepare("INSERT INTO schema_migrations(version, applied_at) VALUES (?, ?)").run(2, new Date().toISOString());
     });
     migration();
   }

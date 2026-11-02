@@ -17,12 +17,11 @@ const configSchema = z.object({
   }),
   storage: z.object({ databasePath: z.string() }),
   security: z.object({
-    allowedWechatUserIds: z.array(z.string()),
     workspaceRoots: z.array(z.string()),
     requireApprovalForShell: z.boolean()
   }),
   workspaces: z.object({ defaultId: z.string(), defaultPath: z.string() }),
-  wechat: z.object({ enabled: z.boolean(), baseUrl: z.string().url() }),
+  wechat: z.object({ credentialsPath: z.string() }),
   web: z.object({ braveApiKey: z.string().optional(), searchCount: z.number().int().min(1).max(20) })
 });
 
@@ -48,12 +47,11 @@ export function parseConfig(raw: unknown = {}, env: NodeJS.ProcessEnv = process.
     },
     storage: { databasePath: resolve(cwd, "data", "pilink.sqlite") },
     security: {
-      allowedWechatUserIds: [],
       workspaceRoots: [resolve(cwd, "workspaces")],
       requireApprovalForShell: true
     },
     workspaces: { defaultId: "default", defaultPath: resolve(cwd, "workspaces", "default") },
-    wechat: { enabled: false, baseUrl: "https://ilinkai.weixin.qq.com" },
+    wechat: { credentialsPath: resolve(cwd, "data", "wechat", "credentials.json") },
     web: { searchCount: 8 }
   };
 
@@ -69,16 +67,14 @@ export function parseConfig(raw: unknown = {}, env: NodeJS.ProcessEnv = process.
 
   const pi = asRecord(merged.pi);
   const storage = asRecord(merged.storage);
-  const security = asRecord(merged.security);
+  const wechat = asRecord(merged.wechat);
   const web = asRecord(merged.web);
   if (env.PILINK_PI_CLI_PATH) pi.cliPath = env.PILINK_PI_CLI_PATH;
   if (env.PI_CODING_AGENT_DIR) pi.agentDir = env.PI_CODING_AGENT_DIR;
   if (env.PILINK_PI_SESSION_DIR) pi.sessionDir = env.PILINK_PI_SESSION_DIR;
   if (env.PILINK_DATABASE_PATH) storage.databasePath = env.PILINK_DATABASE_PATH;
+  if (env.PILINK_WECHAT_CREDENTIALS_PATH) wechat.credentialsPath = env.PILINK_WECHAT_CREDENTIALS_PATH;
   if (env.BRAVE_SEARCH_API_KEY) web.braveApiKey = env.BRAVE_SEARCH_API_KEY;
-  if (env.WECHAT_ALLOWED_USER_IDS !== undefined) {
-    security.allowedWechatUserIds = env.WECHAT_ALLOWED_USER_IDS.split(",").map((v) => v.trim()).filter(Boolean);
-  }
   return configSchema.parse(merged);
 }
 

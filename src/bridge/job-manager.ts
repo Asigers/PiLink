@@ -52,6 +52,13 @@ export class JobManager {
     return rows.map(mapJob);
   }
 
+  getLatestActive(conversationId: string): JobRecord | undefined {
+    const row = this.db.prepare(
+      "SELECT * FROM jobs WHERE conversation_id = ? AND status IN ('queued', 'running') ORDER BY created_at DESC LIMIT 1"
+    ).get(conversationId) as JobRow | undefined;
+    return row ? mapJob(row) : undefined;
+  }
+
   markRunning(id: string): void { this.update(id, "running", null, new Date().toISOString(), null); }
   complete(id: string): void { this.update(id, "completed", null, null, new Date().toISOString()); }
   fail(id: string, error: string): void { this.update(id, "failed", error, null, new Date().toISOString()); }

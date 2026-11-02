@@ -9,7 +9,6 @@
   },
   "storage": { "databasePath": "./data/pilink.sqlite" },
   "security": {
-    "allowedWechatUserIds": [],
     "workspaceRoots": ["./workspaces"],
     "requireApprovalForShell": true
   },
@@ -18,8 +17,7 @@
     "defaultPath": "./workspaces/default"
   },
   "wechat": {
-    "enabled": false,
-    "baseUrl": "https://ilinkai.weixin.qq.com"
+    "credentialsPath": "./data/wechat/credentials.json"
   },
   "web": { "searchCount": 8 }
 }

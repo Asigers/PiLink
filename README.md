@@ -1,55 +1,57 @@
 # PiLink
 
-**Your local AI agent, anywhere.**
+**Your local Pi Agent, controlled from your personal WeChat.**
 
-PiLink connects WeChat to a locally running [Pi](https://pi.dev) agent. Pi remains the only agent runtime: it owns reasoning, tool selection, execution, and session history. PiLink provides channel transport, conversation routing, task tracking, persistence, and policy enforcement.
+PiLink connects one personal WeChat ClawBot to one local Pi Agent. Pi is the only agent runtime: it owns model inference, reasoning, tool selection, execution, and the conversation transcript. PiLink implements the iLink transport, message routing, task lifecycle, and local state.
 
-> Status: early foundation / active development. The first milestone is a reliable local Pi RPC bridge. The WeChat iLink adapter and agent tools will be implemented incrementally; do not treat the current skeleton as a production-ready bot.
+> Status: Milestone 1 implementation is in place. A real QR login and end-to-end message exchange still need to be verified on the target Mac with the owner's WeChat account.
 
 ## Architecture
 
 ~~~text
-WeChat
+Your personal WeChat
   |
-Tencent iLink (QR auth, long polling, send/reply)
+Tencent iLink (QR login, long polling, send/reply)
   |
-Channel adapter
+PiLink WeChat adapter
+  |-- one linked Bot account
+  |-- owner-only direct-message filter
+  |-- durable update cursor + inbound deduplication
+  |-- context_token-aware replies
   |
 PiLink Bridge
-  |-- identity / allowlist
-  |-- chat -> conversation -> Pi session routing
-  |-- jobs / progress / approvals / outbox
-  |-- SQLite persistence
+  |-- one personal chat
+  |-- /new /status /stop /help
+  |-- queued jobs and completion notifications
+  |-- SQLite state
   |
-Pi RPC Supervisor
-  |-- one worker per active Pi session
+Pi RPC Worker Pool
+  |-- one active worker per Pi session
   |-- official @earendil-works/pi-coding-agent RpcClient
-  |-- event normalization
   |
 Pi Agent Runtime
-  |-- existing model/provider configuration
-  |-- Pi built-in tools, extensions and skills
-  |-- Pi-owned JSONL session and compaction
-  |
-Local workspace / internet / browser / external APIs
+  |-- your existing model/provider configuration
+  |-- Pi tools, extensions and skills
+  |-- Pi-owned JSONL sessions and compaction
 ~~~
 
 ## Design principles
 
-1. **Pi is the only agent brain.** The bridge never calls an LLM or makes task-planning decisions.
-2. **One logical conversation maps to one Pi session.** A WeChat chat can own multiple conversations.
-3. **One active RPC worker owns a session at a time.** Never let multiple processes write the same Pi session file concurrently.
-4. **Pi owns conversation history and compaction.** SQLite stores routing and operational metadata, not a duplicate transcript.
-5. **Treat inbound content as untrusted.** Apply sender allowlists, workspace boundaries, approval policies, and URL/network guards.
-6. **Ship in vertical slices.** A working RPC smoke test precedes the live WeChat integration.
+1. **Single-person product.** One PiLink instance is linked to one personal WeChat owner. No multi-user directory, tenant model, group chat, or sender allowlist.
+2. **Owner check at the channel boundary.** The ilink_user_id returned by QR login is the sole authorized sender. Only direct messages from that owner are dispatched.
+3. **Pi is the only Agent brain.** The bridge never calls an LLM or makes task-planning decisions.
+4. **One default personal conversation.** All ordinary messages continue the active Pi session. /new creates another independent Pi conversation.
+5. **Pi owns context.** Pi owns the JSONL transcript and compaction. SQLite stores routing, job, cursor, and message-deduplication metadata.
+6. **One active RPC writer per session.** Never let multiple processes write the same Pi session file concurrently.
+7. **Treat external content as untrusted.** Pi tools run with the operating-system permissions of the PiLink process; this is not an OS sandbox.
 
 ## Requirements
 
 - Node.js >= 22.19
 - npm
-- Pi installed and configured (pi --version, then configure a model with Pi)
-- A Tencent WeChat iLink bot account for the future WeChat integration
-- A Brave Search API key for web research (optional during the RPC milestone)
+- Pi installed and configured with a working model
+- A personal WeChat account with access to the ClawBot/iLink QR flow
+- A Brave Search API key for web research (optional)
 
 ## Quick start
 
@@ -62,47 +64,93 @@ npm test
 npm run dev -- doctor
 ~~~
 
-Configure the Pi executable and agent directory in .env if they are not discoverable automatically. Never commit credentials.
+Configure Pi paths in .env if needed. Never commit credentials.
 
-## Commands
+## Link your personal WeChat
 
 ~~~bash
-npm run dev -- doctor
-npm run dev -- pi:smoke
-npm run dev -- pi:smoke --session-id my-smoke "Remember this is a persistent PiLink smoke session."
-npm run dev -- pi:smoke --new-session "Run an isolated smoke test."
+npm run dev -- login
+~~~
+
+Scan the terminal QR code with your own WeChat account and confirm the login. The resulting Bot token is stored in data/wechat/credentials.json with owner-only file permissions (0600 on POSIX systems). This file is ignored by Git. The token is stored locally as a credential file; it is not encrypted by PiLink.
+
+To replace the linked account, run npm run dev -- logout and then log in again, or use npm run dev -- login --force.
+
+## Start PiLink
+
+~~~bash
+npm run dev -- start
+~~~
+
+Or build and run:
+
+~~~bash
 npm run build
 npm start
 ~~~
 
-The default smoke session ID is `pilink_smoke`, so running `pi:smoke` again resumes the same Pi session. Use `--session-id <id>` or `PILINK_SMOKE_SESSION_ID` to select another persistent smoke session; use `--new-session` for an isolated one. The smoke test verifies the RPC session ID, waits for `agent_settled`, checks that the session message count advances, and confirms that a final assistant response exists.
+PiLink long-polls iLink, accepts only the QR-login owner's direct messages, routes text and WeChat-transcribed voice text to Pi, and sends the final answer back using the inbound context_token.
 
-The RPC smoke test is local-only. It does not require WeChat credentials.
+## WeChat commands
+
+| Command | Purpose |
+|---|---|
+| /new | Create a new independent Pi conversation |
+| /status | Show the active task and queued task count |
+| /stop | Abort the active task and clear queued tasks in the current conversation |
+| /help | Show commands |
+
+Ordinary text messages continue the currently active conversation. Creating a new conversation does not erase older Pi session files.
+
+## Local commands
+
+~~~bash
+npm run dev -- doctor
+npm run dev -- status
+npm run dev -- login
+npm run dev -- logout
+npm run dev -- start
+npm run dev -- pi:smoke
+npm run build
+npm test
+~~~
+
+The default smoke-test session ID is pilink_smoke; repeating the smoke test resumes the same Pi session. The RPC smoke test is local-only and does not require WeChat credentials.
+
+## Current scope and limitations
+
+- Text messages and voice messages with an iLink-provided transcript are supported.
+- Images, files, videos, raw voice decoding, and group chats are not supported in this milestone.
+- Replies are sent as complete messages after Pi finishes; token-by-token streaming is not implemented.
+- Long-running tasks send an acknowledgement and a final result. Durable outbound retry/outbox delivery is not yet implemented.
+- A stale iLink token stops the transport; run pilink login again.
+- The protocol implementation follows Tencent's public openclaw-weixin protocol reference: https://github.com/Tencent/openclaw-weixin/blob/main/docs/protocol.md. That document is derived from the client implementation and is not a complete server contract.
+
+## Security
+
+The iLink token is a bearer credential. Keep the credentials file private and run PiLink under your own OS account. PiLink checks the owner ID from QR login before dispatching a message, but Pi tools/extensions execute with the OS permissions of the PiLink process. Use a dedicated OS account or sandbox before enabling unattended destructive operations. Do not expose Pi RPC over a network port.
 
 ## Repository layout
 
 - src/pi: Pi RPC process and worker lifecycle
-- src/bridge: routing, sessions, jobs, and event handling
+- src/bridge: personal chat routing, jobs, and commands
 - src/storage: SQLite schema and repositories
-- src/channels/wechat: iLink channel boundary
-- src/tools: reusable web-research tool implementations
+- src/channels/wechat: QR login, iLink API, credentials, transport, and inbound state
+- src/tools: reusable web-research tools
 - pi/extensions: extensions loaded by Pi
 - pi/skills: reusable agent skills
-- docs: architecture and implementation notes
-
-## Security
-
-Pi tools and extensions execute with the operating-system permissions of the Pi process. PiLink's allowlist and approval policy are defense-in-depth, not an OS sandbox. Run PiLink under a dedicated OS account or inside an appropriately restricted environment before enabling unattended file or shell operations. Do not expose Pi RPC over a network port.
+- docs: architecture, protocol notes, and development guide
 
 ## Roadmap
 
-- [x] Repository and architecture foundation
 - [x] Pi RPC worker lifecycle and persistent smoke-test harness
-- [ ] Real Pi RPC verification on the target Mac and restart/resume acceptance
-- [ ] WeChat iLink QR login and text-message loop
-- [ ] Brave search and source-aware web research
-- [ ] File ingestion, workspace policy, and remote approvals
-- [ ] Browser automation, memory, and scheduler
+- [x] Single-owner WeChat QR login and local credential storage
+- [x] iLink long polling, cursor persistence, and inbound message deduplication
+- [x] Owner-only direct-message routing and context-token-aware replies
+- [x] Pi RPC task queue and /new, /status, /stop, /help
+- [ ] Real QR login and end-to-end acceptance on the target Mac
+- [ ] Durable outbound outbox and restart recovery for running jobs
+- [ ] Browser automation, attachment ingestion, curated memory, and scheduler
 
 ## License
 

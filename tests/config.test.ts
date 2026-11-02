@@ -2,17 +2,17 @@ import { describe, expect, it } from "vitest";
 import { parseConfig } from "../src/config.js";
 
 describe("configuration", () => {
-  it("uses safe defaults and fails closed for remote senders", () => {
+  it("uses personal single-account defaults without a multi-user allowlist", () => {
     const config = parseConfig({}, {});
-    expect(config.wechat.enabled).toBe(false);
-    expect(config.security.allowedWechatUserIds).toEqual([]);
+    expect(config.wechat.credentialsPath).toContain("credentials.json");
     expect(config.security.requireApprovalForShell).toBe(true);
     expect(config.pi.rpcTimeoutMs).toBeGreaterThan(0);
+    expect("allowedWechatUserIds" in config.security).toBe(false);
   });
 
-  it("parses the sender allowlist from the environment", () => {
-    const config = parseConfig({}, { WECHAT_ALLOWED_USER_IDS: "wx-a, wx-b ,,wx-c" });
-    expect(config.security.allowedWechatUserIds).toEqual(["wx-a", "wx-b", "wx-c"]);
+  it("allows the local credentials path to be overridden", () => {
+    const config = parseConfig({}, { PILINK_WECHAT_CREDENTIALS_PATH: "/tmp/pilink/wechat.json" });
+    expect(config.wechat.credentialsPath).toBe("/tmp/pilink/wechat.json");
   });
 
   it("applies explicit configuration over defaults", () => {
