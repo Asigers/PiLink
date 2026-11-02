@@ -6,7 +6,7 @@ export interface PiSmokeOptions {
 }
 
 const DEFAULT_SESSION_ID = "pilink_smoke";
-const SESSION_ID_PATTERN = /^[A-Za-z0-9._-]{1,128}$/;
+const SESSION_ID_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,126}[A-Za-z0-9])?$/;
 
 export function parsePiSmokeOptions(args: string[], env: NodeJS.ProcessEnv = process.env): PiSmokeOptions {
   let sessionId = env.PILINK_SMOKE_SESSION_ID?.trim() || DEFAULT_SESSION_ID;
@@ -40,8 +40,8 @@ export function parsePiSmokeOptions(args: string[], env: NodeJS.ProcessEnv = pro
     throw new Error("Use either --new-session or --session-id / PILINK_SMOKE_SESSION_ID, not both");
   }
   if (newSession) sessionId = "pilink_smoke_" + randomUUID().replace(/-/g, "").slice(0, 12);
-  if (!SESSION_ID_PATTERN.test(sessionId)) {
-    throw new Error("Invalid smoke session ID. Use 1-128 letters, numbers, dots, underscores, or hyphens.");
+  if (sessionId.trim() !== sessionId || sessionId.length > 128 || !SESSION_ID_PATTERN.test(sessionId)) {
+    throw new Error("Invalid smoke session ID. Use 1-128 characters, start and end with a letter or number, and use only letters, numbers, dots, underscores, or hyphens.");
   }
 
   return {

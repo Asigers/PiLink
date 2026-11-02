@@ -34,6 +34,9 @@ describe("Pi RPC smoke options", () => {
   it("rejects conflicting and unsafe session identifiers", () => {
     expect(() => parsePiSmokeOptions(["--new-session", "--session-id", "named"], {})).toThrow(/either/);
     expect(() => parsePiSmokeOptions(["--session-id", "../escape"], {})).toThrow(/Invalid smoke session ID/);
+    expect(() => parsePiSmokeOptions(["--session-id", "_leading"], {})).toThrow(/Invalid smoke session ID/);
+    expect(() => parsePiSmokeOptions(["--session-id", "trailing-"], {})).toThrow(/Invalid smoke session ID/);
+    expect(() => parsePiSmokeOptions(["--session-id", "safe\n"], {})).toThrow(/Invalid smoke session ID/);
     expect(() => parsePiSmokeOptions(["--session-id"], {})).toThrow(/requires a value/);
   });
 });
