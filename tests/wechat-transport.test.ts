@@ -52,6 +52,9 @@ describe("WeChat iLink transport", () => {
       resolveMessage();
     });
     await messageHandled;
+    for (let attempt = 0; attempt < 10 && inboundStore.getCursor() !== "cursor-after-batch"; attempt += 1) {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
     expect(inboundStore.getCursor()).toBe("cursor-after-batch");
     expect(inboundStore.beginMessage({ messageId: "owner-message", senderId: "owner-id", contextToken: "reply-context", payload: {} })).toBe(false);
     await transport.stop();
