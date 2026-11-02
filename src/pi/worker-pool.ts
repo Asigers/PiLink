@@ -26,7 +26,7 @@ export class PiWorkerPool<TWorker extends PiWorkerLifecycle = PiRpcWorker> {
     private readonly config: AppConfig,
     createWorker?: PiWorkerFactory<TWorker>
   ) {
-    this.createWorker = createWorker ?? ((options) => new PiRpcWorker(options) as TWorker);
+    this.createWorker = createWorker ?? ((options) => new PiRpcWorker(options) as unknown as TWorker);
   }
 
   async getOrStart(descriptor: WorkerDescriptor): Promise<TWorker> {
