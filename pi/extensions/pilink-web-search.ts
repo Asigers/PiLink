@@ -21,26 +21,20 @@ export default function registerPiLinkTools(pi: ExtensionAPI): void {
     execute: async (_toolCallId, params) => {
       const apiKey = process.env.BRAVE_SEARCH_API_KEY;
       if (!apiKey) {
-        return {
-          content: [{ type: "text", text: "Web search is unavailable: configure BRAVE_SEARCH_API_KEY in PiLink's environment." }],
-          isError: true
-        };
+        throw new Error("Web search is unavailable: configure BRAVE_SEARCH_API_KEY in PiLink's environment.");
       }
-      try {
-        const results = await searchWeb({
-          apiKey,
-          query: params.query,
-          count: params.count,
-          country: params.country,
-          freshness: params.freshness
-        });
-        return { content: [{ type: "text", text: formatSearchResults(results) }], isError: false };
-      } catch (error) {
-        return {
-          content: [{ type: "text", text: error instanceof Error ? error.message : String(error) }],
-          isError: true
-        };
-      }
+
+      const results = await searchWeb({
+        apiKey,
+        query: params.query,
+        count: params.count,
+        country: params.country,
+        freshness: params.freshness
+      });
+      return {
+        content: [{ type: "text", text: formatSearchResults(results) }],
+        details: { provider: "brave-search", resultCount: results.length }
+      };
     }
   });
 }
