@@ -5,6 +5,7 @@ import type { AppConfig } from "../config.js";
 import { resolvePiCliPath, resolveProjectPath } from "../config.js";
 
 export type PiEvent = Parameters<RpcClient["onEvent"]>[0] extends (event: infer T) => void ? T : never;
+export type PiSessionState = Awaited<ReturnType<RpcClient["getState"]>>;
 
 export interface PiWorkerOptions {
   sessionId: string;
@@ -33,6 +34,8 @@ function eventText(event: PiEvent): string {
 export class PiRpcWorker {
   private readonly client: RpcClient;
   private started = false;
+  private startPromise: Promise<void> | null = null;
+  private stopPromise: Promise<void> | null = null;
   private promptTail: Promise<void> = Promise.resolve();
 
   constructor(private readonly options: PiWorkerOptions) {
@@ -57,11 +60,28 @@ export class PiRpcWorker {
   }
 
   async start(): Promise<void> {
+    if (this.stopPromise) await this.stopPromise;
     if (this.started) return;
-    await mkdir(resolve(this.options.cwd), { recursive: true });
-    await mkdir(resolve(this.options.sessionDir), { recursive: true });
-    await this.client.start();
-    this.started = true;
+    if (this.startPromise) return this.startPromise;
+
+    const starting = (async () => {
+      await mkdir(resolve(this.options.cwd), { recursive: true });
+      await mkdir(resolve(this.options.sessionDir), { recursive: true });
+      try {
+        await this.client.start();
+        this.started = true;
+      } catch (error) {
+        await this.client.stop().catch(() => undefined);
+        throw error;
+      }
+    })();
+
+    this.startPromise = starting;
+    try {
+      await starting;
+    } finally {
+      if (this.startPromise === starting) this.startPromise = null;
+    }
   }
 
   onEvent(listener: (event: PiEvent) => void): () => void {
@@ -74,7 +94,7 @@ export class PiRpcWorker {
     onStart?: () => void
   ): Promise<PromptResult> {
     const operation = this.promptTail.then(async () => {
-      if (!this.started) await this.start();
+      await this.start();
       onStart?.();
       const events = await this.client.promptAndWait(message, undefined, timeoutMs);
       return { events, text: events.map(eventText).join("") };
@@ -97,9 +117,14 @@ export class PiRpcWorker {
     if (this.started) await this.client.abort();
   }
 
-  async getState(): Promise<unknown> {
+  async getState(): Promise<PiSessionState> {
     if (!this.started) throw new Error("Pi RPC worker is not running");
     return this.client.getState();
+  }
+
+  async getLastAssistantText(): Promise<string | null> {
+    if (!this.started) throw new Error("Pi RPC worker is not running");
+    return this.client.getLastAssistantText();
   }
 
   async getSessionStats(): Promise<unknown> {
@@ -113,8 +138,20 @@ export class PiRpcWorker {
   }
 
   async stop(): Promise<void> {
-    if (!this.started) return;
-    await this.client.stop();
-    this.started = false;
+    if (this.stopPromise) return this.stopPromise;
+
+    const stopping = (async () => {
+      if (this.startPromise) await this.startPromise.catch(() => undefined);
+      if (!this.started) return;
+      await this.client.stop();
+      this.started = false;
+    })();
+
+    this.stopPromise = stopping;
+    try {
+      await stopping;
+    } finally {
+      if (this.stopPromise === stopping) this.stopPromise = null;
+    }
   }
 }

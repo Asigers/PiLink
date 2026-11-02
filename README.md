@@ -67,11 +67,15 @@ Configure the Pi executable and agent directory in .env if they are not discover
 ## Commands
 
 ~~~bash
-npm run dev -- doctor       # inspect local prerequisites
-npm run dev -- pi:smoke     # start Pi RPC, send a prompt, wait for agent_settled
+npm run dev -- doctor
+npm run dev -- pi:smoke
+npm run dev -- pi:smoke --session-id my-smoke "Remember this is a persistent PiLink smoke session."
+npm run dev -- pi:smoke --new-session "Run an isolated smoke test."
 npm run build
 npm start
 ~~~
+
+The default smoke session ID is `pilink_smoke`, so running `pi:smoke` again resumes the same Pi session. Use `--session-id <id>` or `PILINK_SMOKE_SESSION_ID` to select another persistent smoke session; use `--new-session` for an isolated one. The smoke test verifies the RPC session ID, waits for `agent_settled`, checks that the session message count advances, and confirms that a final assistant response exists.
 
 The RPC smoke test is local-only. It does not require WeChat credentials.
 
@@ -93,8 +97,8 @@ Pi tools and extensions execute with the operating-system permissions of the Pi 
 ## Roadmap
 
 - [x] Repository and architecture foundation
-- [ ] Pi RPC smoke test and worker lifecycle
-- [ ] SQLite-backed conversation and job routing
+- [x] Pi RPC worker lifecycle and persistent smoke-test harness
+- [ ] Real Pi RPC verification on the target Mac and restart/resume acceptance
 - [ ] WeChat iLink QR login and text-message loop
 - [ ] Brave search and source-aware web research
 - [ ] File ingestion, workspace policy, and remote approvals

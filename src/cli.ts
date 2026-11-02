@@ -5,11 +5,14 @@ import { loadConfig, resolvePiCliPath } from "./config.js";
 import { createLogger } from "./logger.js";
 import { openDatabase } from "./storage/database.js";
 import { PiRpcWorker } from "./pi/rpc-worker.js";
+import { parsePiSmokeOptions } from "./pi/smoke-options.js";
 
 function printUsage(): void {
   console.log("PiLink commands:");
   console.log("  doctor       Check local prerequisites and configuration");
   console.log("  pi:smoke     Run a local prompt through Pi RPC");
+  console.log("               --session-id <id>  Reuse a named smoke session");
+  console.log("               --new-session      Create an isolated smoke session");
   console.log("  start        Initialize the local runtime skeleton");
 }
 
@@ -46,9 +49,8 @@ async function doctor(): Promise<number> {
   return failures === 0 ? 0 : 1;
 }
 
-async function piSmoke(prompt: string): Promise<void> {
+async function piSmoke(prompt: string, sessionId: string): Promise<void> {
   const config = loadConfig();
-  const sessionId = "smoke_" + Date.now().toString(36);
   const worker = new PiRpcWorker({
     sessionId,
     sessionDir: resolve(config.pi.sessionDir),
@@ -57,7 +59,7 @@ async function piSmoke(prompt: string): Promise<void> {
     config
   });
 
-  worker.onEvent((event) => {
+  const unsubscribe = worker.onEvent((event) => {
     const value = event as unknown as {
       type?: string;
       toolName?: string;
@@ -72,11 +74,35 @@ async function piSmoke(prompt: string): Promise<void> {
 
   try {
     await worker.start();
-    console.log("Pi RPC started. Sending prompt...");
-    await worker.promptAndWait(prompt);
+    const before = await worker.getState();
+    if (before.sessionId !== sessionId) {
+      throw new Error("Pi opened an unexpected session: expected " + sessionId + ", received " + before.sessionId);
+    }
+
+    console.log("Pi RPC started. Session: " + sessionId);
+    console.log("Existing session messages: " + before.messageCount);
+    console.log("Sending prompt...");
+    const result = await worker.promptAndWait(prompt);
+    if (!result.events.some((event) => (event as { type?: string }).type === "agent_settled")) {
+      throw new Error("Pi RPC returned without an agent_settled event");
+    }
+
+    const after = await worker.getState();
+    if (after.sessionId !== sessionId) throw new Error("Pi session ID changed during the smoke test");
+    if (after.messageCount <= before.messageCount) {
+      throw new Error("Pi session message count did not increase after the prompt");
+    }
+
+    const assistantText = await worker.getLastAssistantText();
+    if (!assistantText?.trim()) throw new Error("Pi completed the run without a final assistant text response");
+
     process.stdout.write("\n");
-    console.log("Pi RPC smoke test completed.");
+    console.log("Pi RPC smoke test passed.");
+    console.log("Session persisted: " + sessionId);
+    console.log("Message count: " + before.messageCount + " -> " + after.messageCount);
+    console.log("Resume check: run this command again with the same session ID to continue this conversation.");
   } finally {
+    unsubscribe();
     await worker.stop();
   }
 }
@@ -93,8 +119,8 @@ async function main(): Promise<void> {
     return;
   }
   if (command === "pi:smoke") {
-    const prompt = process.argv.slice(3).join(" ") || "Reply briefly: PiLink can communicate with Pi over RPC.";
-    await piSmoke(prompt);
+    const options = parsePiSmokeOptions(process.argv.slice(3));
+    await piSmoke(options.prompt, options.sessionId);
     return;
   }
   if (command === "start") {
