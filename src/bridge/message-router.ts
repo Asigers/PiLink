@@ -30,7 +30,12 @@ export class MessageRouter {
       throw new Error("Default workspace is outside the configured workspace roots");
     }
 
-    const chatId = this.sessions.getOrCreateChat(message.accountId, message.peerId, message.chatType, message.contextToken);
+    const chatId = this.sessions.getOrCreateChat(
+      message.accountId,
+      message.peerId,
+      message.chatType,
+      message.contextToken
+    );
     const conversation = this.sessions.getActiveConversation(chatId) ?? this.sessions.createConversation({
       chatId,
       title: "Assistant",
@@ -40,7 +45,6 @@ export class MessageRouter {
     });
 
     const job = this.jobs.create(conversation.id, message.text);
-    this.jobs.markRunning(job.id);
     try {
       const worker = await this.workers.getOrStart({
         sessionId: conversation.piSessionId,
@@ -48,7 +52,11 @@ export class MessageRouter {
         cwd: conversation.workspacePath,
         name: conversation.title
       });
-      const result = await worker.promptAndWait(message.text);
+      const result = await worker.promptAndWait(
+        message.text,
+        this.config.pi.rpcTimeoutMs,
+        () => this.jobs.markRunning(job.id)
+      );
       this.jobs.complete(job.id);
       return { jobId: job.id, conversationId: conversation.id, text: result.text };
     } catch (error) {
