@@ -22,13 +22,20 @@ describe("SessionManager", () => {
   it("creates and switches logical conversations independently", () => {
     const chatId = manager.getOrCreateChat("bot-1", "user-1");
     const first = manager.createConversation({
-      chatId, title: "Research", workspaceId: "research",
-      workspacePath: "/tmp/pilink/research", piSessionDir: "/tmp/pilink/sessions"
+      chatId,
+      title: "Research",
+      workspaceId: "research",
+      workspacePath: "/tmp/pilink/research",
+      piSessionDir: "/tmp/pilink/sessions"
     });
     const second = manager.createConversation({
-      chatId, title: "Coding", workspaceId: "coding",
-      workspacePath: "/tmp/pilink/coding", piSessionDir: "/tmp/pilink/sessions"
+      chatId,
+      title: "Coding",
+      workspaceId: "coding",
+      workspacePath: "/tmp/pilink/coding",
+      piSessionDir: "/tmp/pilink/sessions"
     });
+
     expect(manager.getActiveConversation(chatId)?.id).toBe(second.id);
     expect(manager.switchConversation(chatId, first.id)).toBe(true);
     expect(manager.getActiveConversation(chatId)?.id).toBe(first.id);
@@ -40,9 +47,12 @@ describe("SessionManager", () => {
     const firstChat = manager.getOrCreateChat("bot-1", "user-1");
     const secondChat = manager.getOrCreateChat("bot-1", "user-2");
     const conversation = manager.createConversation({
-      chatId: firstChat, title: "Private", workspaceId: "default",
-      workspacePath: "/tmp/pilink/default", piSessionDir: "/tmp/pilink/sessions"
+      chatId: firstChat,
+      title: "Private",
+      workspaceId: "default",
+      workspacePath: "/tmp/pilink/default",
+      piSessionDir: "/tmp/pilink/sessions"
     });
     expect(manager.switchConversation(secondChat, conversation.id)).toBe(false);
   });
-}
+});
