@@ -23,12 +23,49 @@ Implementation status: **code complete; live-account acceptance pending**.
 - [x] Connect the transport, MessageRouter, JobManager, WorkerPool, and Pi RPC.
 - [x] Add /new, /status, /stop, and /help commands.
 - [x] Add local start/login/logout/status commands and protocol/unit tests.
-- [ ] Run QR login and exchange real messages with the owner's WeChat account on the target Mac.
-- [ ] Verify stop, restart, and stale-token recovery against the live iLink service.
+- [x] Complete a real WeChat -> Pi RPC -> WeChat round trip on the owner's Mac.
 
-Acceptance: CI verifies the code and protocol payloads. Real account acceptance remains a local step because PiLink cannot use the owner's WeChat session or QR credentials in GitHub Actions.
+Acceptance: CI verifies the code and protocol payloads. Real account acceptance is performed on the owner's Mac because GitHub Actions cannot use the owner's WeChat session or QR credentials.
 
-## Milestone 2 — Research tools
+## Milestone 2 — PiLink Memory V1
+
+Design: [docs/memory-architecture.md](memory-architecture.md). Product decisions are confirmed: hybrid automatic memory, global user preferences plus isolated workspace memory, and Dreaming on the configured Pi model.
+
+### Phase A — Foundation
+
+- [ ] Add schema v3: conversation_turns, memory_items, memory_sources, memory_versions, memory_summaries, memory_jobs, memory_settings, memory_suppressions, and retrieval audit.
+- [ ] Record user-visible user/assistant turns with conversation, Pi session, and workspace provenance.
+- [ ] Implement MemoryRepository with transactional create/update/version/source/delete.
+- [ ] Implement global owner scope and workspace-scoped project scope.
+- [ ] Add owner-level capture/retrieval settings.
+- [ ] Add /memory, /memory search, /memory show, /memory sources, /memory edit, and forget preview/confirmation.
+
+### Phase B — Dreaming
+
+- [ ] Add durable, coalesced memory jobs with leases, bounded retries, and startup recovery.
+- [ ] Use a dedicated short-lived Pi RPC session with the same configured provider/model.
+- [ ] Add a dedicated Dreaming prompt and a no-tools guard extension.
+- [ ] Validate structured proposals with Zod and deterministic scope/privacy/importance policy.
+- [ ] Generate derived summaries from validated active memory items.
+- [ ] Trigger after 3 eligible turns / 60 seconds idle; explicit remember and /memory refresh run immediately.
+
+### Phase C — Retrieval
+
+- [ ] Add FTS5/trigram search and short-query fallback.
+- [ ] Add pilink-memory-context Pi extension using before_agent_start.
+- [ ] Inject only relevant global + current-workspace memories within a bounded token budget.
+- [ ] Add retrieval observability and fail-open behavior.
+- [ ] Test global preference sharing and cross-project isolation.
+
+### Phase D — Quality and operations
+
+- [ ] Verify and implement historical Pi-session backfill through the supported Pi session reader.
+- [ ] Add conflict review, stale-memory handling, and quality diagnostics.
+- [ ] Add export/import and richer natural-language corrections.
+
+Acceptance: a new Pi session recalls relevant durable user preferences and current-project facts; other project memories are never injected; memories have inspectable sources and versions; owner corrections win; forgotten memories are suppressed from re-learning; Dreaming is asynchronous, restart-safe, and tool-free.
+
+## Milestone 3 — Research tools
 
 - [ ] Register and validate Brave Search as a Pi tool.
 - [ ] Add URL fetching and readable-content extraction.
@@ -37,7 +74,7 @@ Acceptance: CI verifies the code and protocol payloads. Real account acceptance 
 
 Acceptance: Pi can search, inspect primary sources, cross-check, and return traceable URLs.
 
-## Milestone 3 — Local operations and approvals
+## Milestone 4 — Local operations and approvals
 
 - [ ] Add workspace registry and canonical-path checks.
 - [ ] Add file ingestion and attachment lifecycle.
@@ -46,12 +83,11 @@ Acceptance: Pi can search, inspect primary sources, cross-check, and return trac
 
 Acceptance: safe local tasks run unattended; destructive or out-of-scope actions require explicit approval.
 
-## Milestone 4 — Reliability and extended tools
+## Milestone 5 — Reliability and extended tools
 
 - [ ] Add worker idle eviction, crash recovery, and per-session leases.
 - [ ] Add a durable outbound outbox and recovery for interrupted jobs.
 - [ ] Add Playwright MCP with an isolated browser profile.
-- [ ] Add curated long-term memory and project memory.
 - [ ] Add scheduler and notification delivery rules.
 
 Acceptance: long-running tasks survive Bridge restarts and do not create duplicate Pi session writers.
