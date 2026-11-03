@@ -4,7 +4,7 @@
 
 PiLink connects one personal WeChat ClawBot to one local Pi Agent. Pi is the only agent runtime: it owns model inference, reasoning, tool selection, execution, and the conversation transcript. PiLink implements the iLink transport, message routing, task lifecycle, and local state.
 
-> Status: Milestone 1 implementation is in place. A real QR login and end-to-end message exchange still need to be verified on the target Mac with the owner's WeChat account.
+> Status: Milestone 1 implementation is in place and the owner's Mac has completed a real WeChat -> Pi RPC -> WeChat round trip. Memory is designed but not yet implemented.
 
 ## Architecture
 
@@ -29,6 +29,12 @@ Pi RPC Worker Pool
   |-- one active worker per Pi session
   |-- official @earendil-works/pi-coding-agent RpcClient
   |
+PiLink Memory Engine (planned)
+  |-- global user memory + isolated workspace memory
+  |-- asynchronous Dreaming on the configured Pi model
+  |-- provenance, version history, correction and forget controls
+  |-- scoped FTS retrieval injected by a Pi extension
+  |
 Pi Agent Runtime
   |-- your existing model/provider configuration
   |-- Pi tools, extensions and skills
@@ -41,9 +47,10 @@ Pi Agent Runtime
 2. **Owner check at the channel boundary.** The ilink_user_id returned by QR login is the sole authorized sender. Only direct messages from that owner are dispatched.
 3. **Pi is the only Agent brain.** The bridge never calls an LLM or makes task-planning decisions.
 4. **One default personal conversation.** All ordinary messages continue the active Pi session. /new creates another independent Pi conversation.
-5. **Pi owns context.** Pi owns the JSONL transcript and compaction. SQLite stores routing, job, cursor, and message-deduplication metadata.
+5. **Pi owns context.** Pi owns the JSONL transcript and compaction. SQLite stores routing, job, cursor, and memory metadata.
 6. **One active RPC writer per session.** Never let multiple processes write the same Pi session file concurrently.
 7. **Treat external content as untrusted.** Pi tools run with the operating-system permissions of the PiLink process; this is not an OS sandbox.
+8. **Memory is a separate continuity layer.** It never replaces Pi session history; global user memories are shared, project memories are workspace-isolated, and retrieval is bounded.
 
 ## Requirements
 
@@ -115,7 +122,7 @@ npm run build
 npm test
 ~~~
 
-The default smoke-test session ID is pilink_smoke; repeating the smoke test resumes the same Pi session. The RPC smoke test is local-only and does not require WeChat credentials.
+The default smoke-test session ID is pilink_smoke; repeating the same command resumes the same Pi session. The RPC smoke test is local-only and does not require WeChat credentials.
 
 ## Current scope and limitations
 
@@ -124,6 +131,7 @@ The default smoke-test session ID is pilink_smoke; repeating the smoke test resu
 - Replies are sent as complete messages after Pi finishes; token-by-token streaming is not implemented.
 - Long-running tasks send an acknowledgement and a final result. Durable outbound retry/outbox delivery is not yet implemented.
 - A stale iLink token stops the transport; run pilink login again.
+- Memory Engine is designed in docs/memory-architecture.md but not yet implemented.
 - The protocol implementation follows Tencent's public openclaw-weixin protocol reference: https://github.com/Tencent/openclaw-weixin/blob/main/docs/protocol.md. That document is derived from the client implementation and is not a complete server contract.
 
 ## Security
@@ -135,6 +143,7 @@ The iLink token is a bearer credential. Keep the credentials file private and ru
 - src/pi: Pi RPC process and worker lifecycle
 - src/bridge: personal chat routing, jobs, and commands
 - src/storage: SQLite schema and repositories
+- src/memory (planned): memory storage, Dreaming, retrieval, and policy
 - src/channels/wechat: QR login, iLink API, credentials, transport, and inbound state
 - src/tools: reusable web-research tools
 - pi/extensions: extensions loaded by Pi
@@ -148,9 +157,11 @@ The iLink token is a bearer credential. Keep the credentials file private and ru
 - [x] iLink long polling, cursor persistence, and inbound message deduplication
 - [x] Owner-only direct-message routing and context-token-aware replies
 - [x] Pi RPC task queue and /new, /status, /stop, /help
-- [ ] Real QR login and end-to-end acceptance on the target Mac
-- [ ] Durable outbound outbox and restart recovery for running jobs
-- [ ] Browser automation, attachment ingestion, curated memory, and scheduler
+- [x] Real WeChat message exchange on the owner's Mac
+- [ ] PiLink Memory V1 (design: docs/memory-architecture.md)
+- [ ] Research tools and source-aware web research
+- [ ] Local operations and approvals
+- [ ] Scheduler, proactive notifications, and long-running reliability
 
 ## License
 
