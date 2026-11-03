@@ -4,7 +4,9 @@
   "private": true,
   "description": "A self-hosted autonomous AI agent powered by Pi, accessible through WeChat.",
   "type": "module",
-  "engines": { "node": ">=22.19" },
+  "engines": {
+    "node": ">=22.19"
+  },
   "scripts": {
     "dev": "tsx src/cli.ts",
     "dev:watch": "tsx watch src/cli.ts",
@@ -29,6 +31,6 @@
     "@types/node": "^24.0.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.12"
+    "vitest": "4.1.11"
   }
 }
