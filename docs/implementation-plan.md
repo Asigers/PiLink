@@ -44,7 +44,7 @@ Design: [docs/memory-architecture.md](memory-architecture.md). Product decisions
 
 - [ ] Add durable, coalesced memory jobs with leases, bounded retries, and startup recovery.
 - [ ] Use a dedicated short-lived Pi RPC session with the same configured provider/model.
-- [ ] Add a dedicated Dreaming prompt and a no-tools guard extension.
+- [ ] Add a dedicated Dreaming prompt and launch the worker with verified --no-tools, --no-extensions, --no-skills, and --no-context-files flags.
 - [ ] Validate structured proposals with Zod and deterministic scope/privacy/importance policy.
 - [ ] Generate derived summaries from validated active memory items.
 - [ ] Trigger after 3 eligible turns / 60 seconds idle; explicit remember and /memory refresh run immediately.

@@ -271,7 +271,7 @@ Each Dreaming batch runs in a dedicated, short-lived Pi RPC session under data/m
 
 It must not receive other project memories, unrelated sessions, the user's whole Pi agent directory, or the entire database.
 
-The Dreaming worker uses a dedicated system prompt, no skills, no web-search extension, and a guard extension that sets the active tool selection to an empty list before the model run. It uses a managed working directory, not the user's project workspace. Verify the tool-disable behavior against the pinned Pi package in an integration test.
+The Dreaming worker starts with the pinned Pi CLI's --no-tools, --no-extensions, --no-skills, and --no-context-files flags, with no explicit extensions or skills. It uses a dedicated system prompt and a managed working directory, not the user's project workspace. Verify every safety flag against the pinned 1.5.0 CLI in an integration test; if a required flag is unavailable or extension discovery cannot be reliably disabled, fail closed and do not run Dreaming. The existing PI_CODING_AGENT_DIR remains available for the same provider/model configuration and authentication, but its user extensions and skills must not load in the Dreaming process.
 
 The worker returns structured JSON proposals only. It is stopped after the batch; it does not share a long-lived transcript with the user's sessions.
 
@@ -476,7 +476,6 @@ src/memory/
 
 pi/extensions/
   pilink-memory-context.ts
-  pilink-memory-no-tools.ts
 
 pi/memory/
   DREAMING.md
@@ -555,7 +554,7 @@ Acceptance:
 | Cross-project leakage | Scope filter in SQL, not model instructions; dedicated isolation tests |
 | Hallucinated memories | Candidate proposals only; source-turn validation; confidence/importance gates |
 | Prompt injection in source text | Treat all transcript content as untrusted data; Dreaming has no tools |
-| Dreaming tool execution | Dedicated extension clears active tools; integration test against pinned Pi version |
+| Dreaming tool execution | Start with --no-tools and --no-extensions plus no skills/context files; fail closed if unsupported; integration test against pinned Pi version |
 | Model/API cost | Batch 3+ turns, coalesce jobs, same model, explicit refresh |
 | SQLite lock contention | WAL mode, short transactions, read-only retrieval connections, bounded busy timeout |
 | Chinese search quality | FTS5 trigram + short-query LIKE fallback |
