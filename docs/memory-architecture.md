@@ -141,7 +141,7 @@ Examples:
 
 Never retrieve Project A memories while a Project B workspace is active. A project memory may be promoted to global scope only by an explicit owner action.
 
-**Current repository limitation:** the current configuration creates only the default workspace. V1 memory scope isolation is enforced by workspace_id; multiple independent project memories become useful when the workspace registry/mapping assigns distinct stable workspace IDs. Do not silently infer project identity from arbitrary prompt text.
+**Required V1 prerequisite:** the current configuration creates only the default workspace and MessageRouter always assigns it to new conversations. Phase A must therefore add a minimal workspace registry and active-workspace selection before claiming practical multi-project isolation. Keep the existing defaultId/defaultPath settings backward-compatible as the default registry entry, allow additional stable workspace IDs with canonical paths, persist active_workspace_id on the chat, and add /workspace list plus /workspace use <id>. Existing conversations stay bound to their stored workspace_id/path; /new uses the chat's selected workspace. Do not silently infer project identity from arbitrary prompt text.
 
 ### 4.3 Retrieval rule
 
@@ -380,6 +380,7 @@ Add a versioned migration after current schema version 2.
 | memory_settings | Owner-level capture/retrieval toggles |
 | memory_suppressions | Hashed tombstones preventing forgotten facts from being re-learned |
 | memory_retrieval_log | Optional IDs-only retrieval audit |
+| workspace registry/config + chats.active_workspace_id | Stable project identity and per-chat workspace selection required for practical project isolation |
 
 Important indexes:
 
@@ -497,7 +498,8 @@ Keep SQL and deterministic policy in src/memory; keep Pi-specific hook glue in p
 
 ### Phase A — Foundation
 
-- Schema v3 migration.
+- Schema v3 migration, including chats.active_workspace_id.
+- Minimal workspace registry/config and /workspace list|use selection; preserve default workspace compatibility.
 - Conversation turn recording.
 - Memory repository, versioning, provenance, and suppression.
 - Owner-level memory settings.
@@ -507,6 +509,7 @@ Acceptance:
 - Existing v2 database migrates without losing chats, jobs, sessions, or cursor state.
 - Memory items can be created, updated, versioned, sourced, and deleted transactionally.
 - Global and project scopes cannot be confused.
+- Two configured workspaces can be selected independently; new conversations inherit the selected workspace, while existing conversations keep their original binding.
 
 ### Phase B — Dreaming
 

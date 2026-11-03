@@ -33,10 +33,11 @@ Design: [docs/memory-architecture.md](memory-architecture.md). Product decisions
 
 ### Phase A — Foundation
 
-- [ ] Add schema v3: conversation_turns, memory_items, memory_sources, memory_versions, memory_summaries, memory_jobs, memory_settings, memory_suppressions, and retrieval audit.
+- [ ] Add schema v3: chats.active_workspace_id, conversation_turns, memory_items, memory_sources, memory_versions, memory_summaries, memory_jobs, memory_settings, memory_suppressions, and retrieval audit.
+- [ ] Add a backward-compatible workspace registry and /workspace list|use commands so separate projects receive distinct stable workspace IDs.
 - [ ] Record user-visible user/assistant turns with conversation, Pi session, and workspace provenance.
 - [ ] Implement MemoryRepository with transactional create/update/version/source/delete.
-- [ ] Implement global owner scope and workspace-scoped project scope.
+- [ ] Implement global owner scope and workspace-scoped project scope; preserve existing conversations' stored workspace bindings.
 - [ ] Add owner-level capture/retrieval settings.
 - [ ] Add /memory, /memory search, /memory show, /memory sources, /memory edit, and forget preview/confirmation.
 
